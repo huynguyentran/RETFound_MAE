@@ -184,13 +184,13 @@ def main(args, criterion):
     
     if args.finetune and not args.eval:
         
-        print(f"Downloading pre-trained weights from: {args.finetune}")
+        # print(f"Downloading pre-trained weights from: {args.finetune}")
         
-        checkpoint_path = hf_hub_download(
-            repo_id=f'YukunZhou/{args.finetune}',
-            filename=f'{args.finetune}.pth',
-        )
-        
+        # checkpoint_path = hf_hub_download(
+        #     repo_id=f'YukunZhou/{args.finetune}',
+        #     filename=f'{args.finetune}.pth',
+        # )
+        checkpoint_path = args.finetune
         checkpoint = torch.load(checkpoint_path, map_location='cpu')
         print("Load pre-trained checkpoint from: %s" % args.finetune)
         
