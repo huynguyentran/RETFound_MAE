@@ -300,6 +300,7 @@ def main(args, criterion):
             label_smoothing=args.smoothing, num_classes=args.nb_classes)
 
     if args.resume and args.eval:
+        add_safe_globals([Namespace])
         checkpoint = torch.load(args.resume, map_location='cpu')
         print("Load checkpoint from: %s" % args.resume)
         model.load_state_dict(checkpoint['model'])
