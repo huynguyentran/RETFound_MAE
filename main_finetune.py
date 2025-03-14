@@ -25,9 +25,6 @@ from engine_finetune import train_one_epoch, evaluate
 import warnings
 import faulthandler
 
-from torch.serialization import add_safe_globals
-from argparse import Namespace
-
 faulthandler.enable()
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
@@ -193,7 +190,7 @@ def main(args, criterion):
         #     repo_id=f'YukunZhou/{args.finetune}',
         #     filename=f'{args.finetune}.pth',
         # )
-        add_safe_globals([Namespace])
+        
         checkpoint_path = args.finetune
         checkpoint = torch.load(checkpoint_path, map_location='cpu')
         print("Load pre-trained checkpoint from: %s" % args.finetune)
@@ -300,7 +297,7 @@ def main(args, criterion):
             label_smoothing=args.smoothing, num_classes=args.nb_classes)
 
     if args.resume and args.eval:
-        add_safe_globals([Namespace])
+        
         checkpoint = torch.load(args.resume, map_location='cpu')
         print("Load checkpoint from: %s" % args.resume)
         model.load_state_dict(checkpoint['model'])
