@@ -14,6 +14,10 @@ def build_dataset(is_train, args):
     root = os.path.join(args.data_path, is_train)
     dataset = datasets.ImageFolder(root, transform=transform)
 
+    print("Classes:", dataset.classes)
+    print("Class-to-Index Mapping:", dataset.class_to_idx)
+    print("Number of Classes:", len(dataset.classes))
+
     return dataset
 
 
