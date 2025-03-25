@@ -142,7 +142,7 @@ def evaluate(data_loader, model, device, args, epoch, mode, num_class, log_write
     
     if mode == 'test':
         cm = ConfusionMatrix(actual_vector=true_labels, predict_vector=pred_labels)
-        cm.plot(cmap=plt.cm.Blues, number_label=True, plot_lib="matplotlib", normalize=False)
+        cm.plot(cmap=plt.cm.Blues, number_label=True, plot_lib="matplotlib")
         plt.savefig(os.path.join(args.output_dir, args.task, 'confusion_matrix_test.jpg'), dpi=600, bbox_inches='tight')
     
     return {k: meter.global_avg for k, meter in metric_logger.meters.items()}, score

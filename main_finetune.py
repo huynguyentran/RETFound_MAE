@@ -147,6 +147,7 @@ def get_args_parser():
 
 
 def main(args, criterion):
+    torch.serialization.add_safe_globals([argparse.Namespace])
     if args.resume and not args.eval:
         resume = args.resume
         checkpoint = torch.load(args.resume, map_location='cpu')
