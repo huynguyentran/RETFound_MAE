@@ -146,7 +146,7 @@ def get_args_parser():
     return parser
 
 
-def main(args, criterion):
+def main(args, criterion=torch.nn.CrossEntropyLoss()):
     torch.serialization.add_safe_globals([argparse.Namespace])
     if args.resume and not args.eval:
         resume = args.resume
