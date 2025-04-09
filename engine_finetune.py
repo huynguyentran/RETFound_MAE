@@ -89,10 +89,11 @@ def evaluate(data_loader, model, device, args, epoch, mode, num_class, log_write
     os.makedirs(os.path.join(args.output_dir, args.task), exist_ok=True)
     
     model.eval()
-    true_onehot, pred_onehot, true_labels, pred_labels, pred_softmax = [], [], [], [], []
-    
+    true_onehot, pred_onehot, true_labels, pred_labels, pred_softmax, filenames_list= [], [], [], [], [], []
+        
     for batch in metric_logger.log_every(data_loader, 10, f'{mode}:'):
-        images, target = batch[0].to(device, non_blocking=True), batch[-1].to(device, non_blocking=True)
+        images, filenames, target = batch[0].to(device, non_blocking=True), batch[1], batch[-1].to(device, non_blocking=True)
+
         target_onehot = F.one_hot(target.to(torch.int64), num_classes=num_class)
         
         with torch.cuda.amp.autocast():
@@ -108,6 +109,15 @@ def evaluate(data_loader, model, device, args, epoch, mode, num_class, log_write
         true_labels.extend(target.cpu().numpy())
         pred_labels.extend(output_label.detach().cpu().numpy())
         pred_softmax.extend(output_.detach().cpu().numpy())
+
+        filenames_list.extend([os.path.basename(f) for f in filenames])
+
+    true_labels_np = np.array(true_labels)
+    pred_labels_np = np.array(pred_labels)
+    pred_softmax_np = np.array(pred_softmax)
+
+    confidences = pred_softmax_np[np.arange(len(pred_labels_np)), pred_labels_np]
+    roc_predictions = list(zip(filenames_list, true_labels_np, pred_labels_np, confidences))
     
     accuracy = accuracy_score(true_labels, pred_labels)
     hamming = hamming_loss(true_onehot, pred_onehot)
@@ -139,6 +149,14 @@ def evaluate(data_loader, model, device, args, epoch, mode, num_class, log_write
         if not file_exists:
             wf.writerow(['val_loss', 'accuracy', 'f1', 'roc_auc', 'hamming', 'jaccard', 'precision', 'recall', 'average_precision', 'kappa'])
         wf.writerow([metric_logger.meters["loss"].global_avg, accuracy, f1, roc_auc, hamming, jaccard, precision, recall, average_precision, kappa])
+
+    roc_path = os.path.join(args.output_dir, args.task, f'roc_predictions_{mode}.csv')
+    file_exists = os.path.isfile(roc_path)
+    with open(roc_path, 'a', newline='', encoding='utf-8') as cfa:
+        wf = csv.writer(cfa)
+        if not file_exists:
+            wf.writerow(['Filename', 'True Label', 'Prediction', 'Probability Score'])
+        wf.writerows(roc_predictions)
     
     if mode == 'test':
         cm = ConfusionMatrix(actual_vector=true_labels, predict_vector=pred_labels)

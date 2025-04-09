@@ -9,10 +9,16 @@ from timm.data import create_transform
 from timm.data.constants import IMAGENET_DEFAULT_MEAN, IMAGENET_DEFAULT_STD
 
 
+class CustomImageFolder(datasets.ImageFolder):
+    def __getitem__(self, index):
+        image, label = super().__getitem__(index)
+        path, _ = self.samples[index]
+        return image, path, label
+
 def build_dataset(is_train, args):
     transform = build_transform(is_train, args)
     root = os.path.join(args.data_path, is_train)
-    dataset = datasets.ImageFolder(root, transform=transform)
+    dataset = CustomImageFolder(root, transform=transform)  
 
     print("Classes:", dataset.classes)
     print("Class-to-Index Mapping:", dataset.class_to_idx)

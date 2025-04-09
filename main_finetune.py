@@ -127,6 +127,8 @@ def get_args_parser():
     parser.add_argument('--pin_mem', action='store_true',
                         help='Pin CPU memory in DataLoader for more efficient (sometimes) transfer to GPU.')
     parser.set_defaults(pin_mem=True)
+    parser.add_argument('--early_stop_patience', default = 0, type=int,
+                        help='Number of patience epochs for early stopping with no imrpovement. Default 0 means this option is disable.')
 
     # distributed training parameters
     parser.add_argument('--world_size', default=1, type=int,
@@ -347,6 +349,8 @@ def main(args, criterion=torch.nn.CrossEntropyLoss()):
     start_time = time.time()
     max_score = 0.0
     best_epoch = 0
+    early_stop_counter = 0
+    patience = args.early_stop_patience
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
             data_loader_train.sampler.set_epoch(epoch)
@@ -364,33 +368,40 @@ def main(args, criterion=torch.nn.CrossEntropyLoss()):
         if max_score < val_score:
             max_score = val_score
             best_epoch = epoch
+            early_stop_counter = 0
             if args.output_dir and args.savemodel:
                 misc.save_model(
                     args=args, model=model, model_without_ddp=model_without_ddp, optimizer=optimizer,
                     loss_scaler=loss_scaler, epoch=epoch, mode='best')
+        else:
+            if args.early_stop_patience:
+                early_stop_counter += 1
+                print(f"No improvement for {early_stop_counter} epochs.")
+                if early_stop_counter >= patience:
+                    print(f"Early stopping at epoch {epoch}. Best score: {max_score:.4f} (epoch {best_epoch})")
+                    break
+
         print("Best epoch = %d, Best score = %.4f" % (best_epoch, max_score))
 
+    checkpoint = torch.load(os.path.join(args.output_dir, args.task, 'checkpoint-best.pth'), map_location='cpu')
+    model_without_ddp.load_state_dict(checkpoint['model'], strict=False)
+    model.to(device)
+    print("Test with the best model, epoch = %d:" % checkpoint['epoch'])
+    test_stats, auc_roc = evaluate(data_loader_test, model, device, args, -1, mode='test',
+                                    num_class=args.nb_classes, log_writer=None)
 
-        if epoch == (args.epochs - 1):
-            checkpoint = torch.load(os.path.join(args.output_dir, args.task, 'checkpoint-best.pth'), map_location='cpu')
-            model_without_ddp.load_state_dict(checkpoint['model'], strict=False)
-            model.to(device)
-            print("Test with the best model, epoch = %d:" % checkpoint['epoch'])
-            test_stats, auc_roc = evaluate(data_loader_test, model, device, args, -1, mode='test',
-                                           num_class=args.nb_classes, log_writer=None)
+    if log_writer is not None:
+        log_writer.add_scalar('loss/val', val_stats['loss'], epoch)
 
+    log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
+                    'epoch': best_epoch,
+                    'n_parameters': n_parameters}
+
+    if args.output_dir and misc.is_main_process():
         if log_writer is not None:
-            log_writer.add_scalar('loss/val', val_stats['loss'], epoch)
-
-        log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
-                     'epoch': epoch,
-                     'n_parameters': n_parameters}
-
-        if args.output_dir and misc.is_main_process():
-            if log_writer is not None:
-                log_writer.flush()
-            with open(os.path.join(args.output_dir, args.task, "log.txt"), mode="a", encoding="utf-8") as f:
-                f.write(json.dumps(log_stats) + "\n")
+            log_writer.flush()
+        with open(os.path.join(args.output_dir, args.task, "log.txt"), mode="a", encoding="utf-8") as f:
+            f.write(json.dumps(log_stats) + "\n")
 
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
