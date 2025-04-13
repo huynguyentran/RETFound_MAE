@@ -343,7 +343,7 @@ def main(args, criterion=torch.nn.CrossEntropyLoss()):
             print("Test with the best model at epoch = %d" % checkpoint['epoch'])
         test_stats, auc_roc = evaluate(data_loader_test, model, device, args, epoch=0, mode='test',
                                        num_class=args.nb_classes, log_writer=log_writer)
-        exit(0)
+        return
 
     print(f"Start training for {args.epochs} epochs")
     start_time = time.time()
