@@ -125,9 +125,13 @@ def evaluate(data_loader, model, device, args, epoch, mode, num_class, log_write
     average_precision = average_precision_score(true_onehot, pred_softmax, average='macro')
     kappa = cohen_kappa_score(true_labels, pred_labels)
     f1 = f1_score(true_onehot, pred_onehot, zero_division=0, average='macro')
-    roc_auc = roc_auc_score(true_onehot, pred_softmax, multi_class='ovr', average='macro')
     precision = precision_score(true_onehot, pred_onehot, zero_division=0, average='macro')
     recall = recall_score(true_onehot, pred_onehot, zero_division=0, average='macro')
+    try:
+        roc_auc = roc_auc_score(true_onehot, pred_softmax, multi_class='ovr', average='macro')
+    except ValueError as e:
+        print(f"Skipping ROC AUC calculation due to error: {e}")
+        roc_auc = 0.0 
     
     score = (f1 + roc_auc + kappa) / 3
     if log_writer:
