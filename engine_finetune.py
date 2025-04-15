@@ -116,7 +116,7 @@ def evaluate(data_loader, model, device, args, epoch, mode, num_class, log_write
     pred_labels_np = np.array(pred_labels)
     pred_softmax_np = np.array(pred_softmax)
 
-    confidences = pred_softmax_np[np.arange(len(pred_labels_np)), pred_labels_np]
+    confidences = pred_softmax_np[:, 1]
     roc_predictions = list(zip(filenames_list, true_labels_np, pred_labels_np, confidences))
     
     accuracy = accuracy_score(true_labels, pred_labels)
